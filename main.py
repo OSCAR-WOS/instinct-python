@@ -29,22 +29,17 @@ class Client(discord.Client):
 
             start_resolution = ''
 
-            try:
-                p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            except:
-                return
-
-            for line in p.stdout:
+            with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as p:
+                for line in p.stdout:
                     # Yields the frame resolutions in the format x,y
                     find = re.match(b'([0-9]+),([0-9]+)', line)
-                
+
                     if find == None:
                         continue
-                    
+
                     # Extract tuple: (b'500', b'200')
                     find = find.groups()
 
-                    # If first entry assign to check 
                     if start_resolution == '':
                         start_resolution = find
 
@@ -55,10 +50,9 @@ class Client(discord.Client):
                         except:
                             pass
                         break
-
-            p.kill()
+                
+                p.kill()
 
 if __name__ == '__main__':
     client = Client()
     client.run(os.environ['TOKEN'])
-
