@@ -11,38 +11,52 @@ class Client(discord.Client):
 
     async def on_message(self, message):
         for embed in message.embeds:
-            if embed.video is discord.Embed.Empty:
+            # Checking if a valid embed is present
+            if embed.video == discord.Embed.Empty:
                 return
 
-            string = 'ffprobe -show_entries frame=width,height -select_streams v -of csv=p=0 -i'
+            # This will run ffprobe each frame extracting the resolution of each frame
+            string = 'ffprobe -v error -show_entries frame=width,height -select_streams v -of csv=p=0 -i'
             cmd = string.split(' ')
 
-            if embed.video.proxy_url:
+            # Grabing the url either from discords cache or absolute url
+            if embed.video.proxy_url != discord.Embed.Empty:
                 cmd.append(embed.video.proxy_url)
-            else:
+            elif embed.video.url != discord.Embed.Empty:
                 cmd.append(embed.video.url)
+            else:
+                return
 
-            frames = {}
+            start_resolution = ''
 
-            check = run_cmd(cmd)
-            if check.returncode == 0:
-                find = re.findall(b'[0-9]+,[0-9]+', check.stdout)
+            try:
+                p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            except:
+                return
 
-                for frame in find:
-                    frames.setdefault(frame, 0)
-                    frames[frame] += 1
+            for line in p.stdout:
+                    # Yields the frame resolutions in the format x,y
+                    find = re.match(b'([0-9]+),([0-9]+)', line)
+                
+                    if find == None:
+                        continue
+                    
+                    # Extract tuple: (b'500', b'200')
+                    find = find.groups()
 
-            if len(frames.keys()) > 1:
-                try:
-                    await message.delete()
-                except:
-                    pass
+                    # If first entry assign to check 
+                    if start_resolution == '':
+                        start_resolution = find
 
+                    # If new frame does not match start_resolution safe to assume maniuplation of the image and highly likely a crasher
+                    if find != start_resolution:
+                        try:
+                            await message.delete()
+                        except:
+                            pass
+                        break
 
-def run_cmd(cmd):
-    completed = subprocess.run(cmd, capture_output=True)
-    return completed
-
+            p.kill()
 
 if __name__ == '__main__':
     client = Client()
