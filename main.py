@@ -3,6 +3,7 @@
 import discord
 import subprocess
 import re
+import signal
 import os
 
 class Client(discord.Client):
@@ -28,8 +29,8 @@ class Client(discord.Client):
                 return
 
             start_resolution = ''
-
-            with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL) as p:
+            
+            with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP + subprocess.HIGH_PRIORITY_CLASS) as p:
                 for line in p.stdout:
                     # Yields the frame resolutions in the format x,y
                     find = re.match(b'([0-9]+),([0-9]+)', line)
@@ -45,13 +46,16 @@ class Client(discord.Client):
 
                     # If new frame does not match start_resolution safe to assume maniuplation of the image and highly likely a crasher
                     if find != start_resolution:
-                        try:
-                            await message.delete()
-                        except:
-                            pass
-                        break
-                
-                p.kill()
+                        p.send_signal(signal.CTRL_BREAK_EVENT)
+                        await delete_message(message)
+
+async def delete_message(message):
+    try:
+        await message.delete()
+    except:
+        pass
+
+    return
 
 if __name__ == '__main__':
     client = Client()
