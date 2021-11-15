@@ -4,7 +4,4 @@ Detects gif crashers along with removal, needs bare metal otherwise can run into
 
 Uses TOKEN stored in the os
 
-
 $ TOKEN={token}
-
-$ ./main.py
